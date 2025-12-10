@@ -1,13 +1,18 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Box, Drawer, List, ListItem, ListItemIcon, ListItemText, CssBaseline, Button } from '@mui/material';
+import { 
+  AppBar, Toolbar, Typography, Box, Drawer, List, ListItem, ListItemIcon, ListItemText, CssBaseline, Button, Avatar 
+} from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
-import MailIcon from '@mui/icons-material/Mail';
 import ListAltIcon from '@mui/icons-material/ListAlt';
-import GroupIcon from '@mui/icons-material/Group'; // <--- 1. NEW IMPORT
+import GroupIcon from '@mui/icons-material/Group';
+import MailIcon from '@mui/icons-material/Mail'; // Mailbox Icon
 import { useNavigate, Outlet } from 'react-router-dom';
+
+// 1. IMPORT THE LOGO
+import logoImg from '../assets/logo.png'; 
 
 const drawerWidth = 240;
 
@@ -25,11 +30,27 @@ export default function Layout() {
       <CssBaseline />
       
       {/* Top Header */}
-      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, bgcolor: '#1976d2' }}>
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Typography variant="h6" noWrap component="div">
-            NTMI Ticketing System
-          </Typography>
+          
+          {/* 2. LOGO + TITLE SECTION */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <img 
+              src={logoImg} 
+              alt="NTMI Logo" 
+              style={{ 
+                height: '40px', // Adjust height to fit the bar
+                width: 'auto',
+                backgroundColor: 'white', // Optional: White background if logo is transparent
+                padding: '4px',
+                borderRadius: '4px' 
+              }} 
+            />
+            <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 'bold' }}>
+              NTMI Ticketing System
+            </Typography>
+          </Box>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <Typography variant="body2">
               {user ? `${user.username} (${user.role})` : 'Guest'}
@@ -61,11 +82,10 @@ export default function Layout() {
                   <ListItemIcon><DashboardIcon /></ListItemIcon>
                   <ListItemText primary="Ops Dashboard" />
                 </ListItem>
-
-                {/* NEW: MAILBOX BUTTON */}
+                
                 <ListItem button onClick={() => navigate('/inbox')}>
                   <ListItemIcon><MailIcon /></ListItemIcon>
-                  <ListItemText primary="Inbox (New Tickets)" />
+                  <ListItemText primary="Inbox (New)" />
                 </ListItem>
                 
                 <ListItem button onClick={() => navigate('/users')}>
@@ -102,7 +122,6 @@ export default function Layout() {
       {/* Main Content Area */}
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <Toolbar />
-        {/* Router injects content here */}
         <Outlet /> 
       </Box>
     </Box>

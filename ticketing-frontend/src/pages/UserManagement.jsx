@@ -9,20 +9,31 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import api from '../api/axiosConfig';
 
+// --- 1. VALIDATION REGEX ---
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phoneRegex = /^[0-9]{10}$/;
+
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [open, setOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   
-  // --- 1. NEW STATES FOR UX ---
-  const [loading, setLoading] = useState(false); // Controls the spinner
-  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' }); // Controls the popup
+  // UX States
+  const [loading, setLoading] = useState(false); 
+  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' }); 
 
+  // --- 2. UPDATED STATE WITH NEW FIELDS ---
   const [currentUser, setCurrentUser] = useState({
-    id: '', username: '', password: '', role: 'BRANCH', branchName: ''
+    id: '', 
+    username: '', 
+    password: '', 
+    role: 'BRANCH', 
+    branchName: '',
+    fullName: '',  // New
+    email: '',     // New
+    phone: ''      // New
   });
 
-  // Helper to show messages
   const showToast = (message, severity = 'success') => {
     setToast({ open: true, message, severity });
   };
@@ -31,16 +42,15 @@ export default function UserManagement() {
     setToast({ ...toast, open: false });
   };
 
-  // Load Users
   const fetchUsers = async () => {
-    setLoading(true); // Start Spinner
+    setLoading(true); 
     try {
       const res = await api.get('/users/all');
       setUsers(res.data);
     } catch (error) {
       showToast("Failed to load users", "error");
     } finally {
-      setLoading(false); // Stop Spinner (whether success or fail)
+      setLoading(false); 
     }
   };
 
@@ -48,7 +58,11 @@ export default function UserManagement() {
 
   const handleOpenAdd = () => {
     setEditMode(false);
-    setCurrentUser({ id: '', username: '', password: '', role: 'BRANCH', branchName: '' });
+    // Reset all fields
+    setCurrentUser({ 
+        id: '', username: '', password: '', role: 'BRANCH', branchName: '', 
+        fullName: '', email: '', phone: '' 
+    });
     setOpen(true);
   };
 
@@ -58,15 +72,29 @@ export default function UserManagement() {
     setOpen(true);
   };
 
-  // Handle Save (Add/Edit)
+  // --- 3. SAVE WITH VALIDATION ---
   const handleSave = async () => {
-    setLoading(true); // Start Spinner
+    // A. VALIDATION CHECKS
+    if (!currentUser.username || !currentUser.password || !currentUser.fullName) {
+      showToast("Please fill in all required fields (Name, User, Pass)", "error");
+      return;
+    }
+    if (currentUser.email && !emailRegex.test(currentUser.email)) {
+      showToast("Invalid Email Address", "error");
+      return;
+    }
+    if (currentUser.phone && !phoneRegex.test(currentUser.phone)) {
+      showToast("Phone number must be exactly 10 digits", "error");
+      return;
+    }
+
+    // B. SEND TO BACKEND
+    setLoading(true); 
     try {
       if (editMode) {
         await api.put(`/users/update/${currentUser.id}`, currentUser);
         showToast("User updated successfully!", "success");
       } else {
-        // Remove empty ID for create
         const { id, ...userToSend } = currentUser; 
         await api.post('/users/create', userToSend);
         showToast("User created successfully!", "success");
@@ -77,11 +105,10 @@ export default function UserManagement() {
       console.error("Save failed:", error);
       showToast("Error saving user. Check data.", "error");
     } finally {
-      setLoading(false); // Stop Spinner
+      setLoading(false); 
     }
   };
 
-  // Handle Delete
   const handleDelete = async (id) => {
     if (confirm("Are you sure you want to delete this user?")) {
       setLoading(true);
@@ -100,20 +127,15 @@ export default function UserManagement() {
   return (
     <Container maxWidth="lg">
       
-      {/* --- 2. LOADING SPINNER (Overlay) --- */}
-      <Backdrop
-        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
-        open={loading}
-      >
+      <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open={loading}>
         <CircularProgress color="inherit" />
       </Backdrop>
 
-      {/* --- 3. POP-UP MESSAGE (Snackbar) --- */}
       <Snackbar 
         open={toast.open} 
         autoHideDuration={6000} 
         onClose={handleCloseToast}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} // Shows at bottom-right
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} 
       >
         <Alert onClose={handleCloseToast} severity={toast.severity} sx={{ width: '100%' }} variant="filled">
           {toast.message}
@@ -131,6 +153,7 @@ export default function UserManagement() {
         <Table>
           <TableHead sx={{ bgcolor: '#eee' }}>
             <TableRow>
+              <TableCell>Full Name</TableCell> {/* Changed from Username to Full Name for better display */}
               <TableCell>Username</TableCell>
               <TableCell>Role</TableCell>
               <TableCell>Branch</TableCell>
@@ -140,6 +163,7 @@ export default function UserManagement() {
           <TableBody>
             {users.map((user) => (
               <TableRow key={user.id}>
+                <TableCell>{user.fullName || "N/A"}</TableCell>
                 <TableCell>{user.username}</TableCell>
                 <TableCell>
                     {user.role === 'OPS' ? 
@@ -157,26 +181,45 @@ export default function UserManagement() {
         </Table>
       </Paper>
 
-      {/* Dialog Form */}
-      <Dialog open={open} onClose={() => setOpen(false)}>
+      {/* --- 4. UPDATED DIALOG FORM --- */}
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editMode ? "Edit User" : "Add New User"}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 400, mt: 1 }}>
-          <TextField label="Username" fullWidth value={currentUser.username} onChange={(e) => setCurrentUser({...currentUser, username: e.target.value})} />
-          <TextField label="Password" fullWidth value={currentUser.password} onChange={(e) => setCurrentUser({...currentUser, password: e.target.value})} />
-          <TextField select label="Role" fullWidth value={currentUser.role} onChange={(e) => setCurrentUser({...currentUser, role: e.target.value})}>
-            <MenuItem value="BRANCH">Branch User</MenuItem>
-            <MenuItem value="OPS">Operations (Admin)</MenuItem>
-          </TextField>
-          {currentUser.role === 'BRANCH' && (
-            <TextField select label="Branch Name" fullWidth value={currentUser.branchName} onChange={(e) => setCurrentUser({...currentUser, branchName: e.target.value})}>
-               {['Gampaha', 'Kandy', 'Galle', 'Nugegoda'].map(b => <MenuItem key={b} value={b}>{b}</MenuItem>)}
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          
+          <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold' }}>Login Details</Typography>
+          <div style={{ display: 'flex', gap: 10 }}>
+             <TextField required label="Username" fullWidth size="small" value={currentUser.username} onChange={(e) => setCurrentUser({...currentUser, username: e.target.value})} />
+             <TextField required label="Password" type="password" fullWidth size="small" value={currentUser.password} onChange={(e) => setCurrentUser({...currentUser, password: e.target.value})} />
+          </div>
+
+          <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold', mt: 1 }}>Personal Info</Typography>
+          <TextField required label="Full Name" fullWidth size="small" value={currentUser.fullName} onChange={(e) => setCurrentUser({...currentUser, fullName: e.target.value})} />
+          
+          <div style={{ display: 'flex', gap: 10 }}>
+             <TextField label="Email" fullWidth size="small" value={currentUser.email} onChange={(e) => setCurrentUser({...currentUser, email: e.target.value})} />
+             <TextField label="Phone (10 digits)" fullWidth size="small" value={currentUser.phone} onChange={(e) => setCurrentUser({...currentUser, phone: e.target.value})} />
+          </div>
+
+          <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 'bold', mt: 1 }}>Role & Branch</Typography>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <TextField select label="Role" fullWidth size="small" value={currentUser.role} onChange={(e) => setCurrentUser({...currentUser, role: e.target.value})}>
+                <MenuItem value="BRANCH">Branch User</MenuItem>
+                <MenuItem value="OPS">Operations (Admin)</MenuItem>
             </TextField>
-          )}
+            
+            {/* Show Branch ONLY if Role is BRANCH */}
+            {currentUser.role === 'BRANCH' && (
+                <TextField select label="Branch Name" fullWidth size="small" value={currentUser.branchName} onChange={(e) => setCurrentUser({...currentUser, branchName: e.target.value})}>
+                {['Gampaha', 'Kandy', 'Galle', 'Nugegoda'].map(b => <MenuItem key={b} value={b}>{b}</MenuItem>)}
+                </TextField>
+            )}
+          </div>
+
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleSave} disabled={loading}>
-            {loading ? "Saving..." : "Save"}
+            {loading ? "Saving..." : "Save User"}
           </Button>
         </DialogActions>
       </Dialog>

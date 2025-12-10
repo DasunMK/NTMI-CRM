@@ -88,6 +88,17 @@ export default function Login() {
               onChange={(e) => setCredentials({...credentials, password: e.target.value})}
               onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
             />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button
+                    type="button" 
+                    variant="text" 
+                    size="small" 
+                    onClick={() => navigate('/forgot-password')} 
+                    sx={{ textTransform: 'none' }}
+                >
+                    Forgot Password?
+                </Button>
+            </Box>
 
             <Button
               fullWidth
@@ -98,18 +109,9 @@ export default function Login() {
             >
               Secure Login
             </Button>
+            
 
-            {/* <Box sx={{ textAlign: 'center', mt: 2, p: 2, bgcolor: '#f7f7f7', borderRadius: 2 }}>
-              <Typography variant="caption" display="block" color="textSecondary">
-                <strong>Demo Credentials:</strong>
-              </Typography>
-              <Typography variant="caption" display="block" color="textSecondary">
-                Admin: <code>admin</code> / <code>admin123</code>
-              </Typography>
-              <Typography variant="caption" display="block" color="textSecondary">
-                Branch: <code>gampaha_user</code> / <code>1234</code>
-              </Typography>
-            </Box> */}
+            
           </Box>
         </Paper>
       </Container>

@@ -1,13 +1,14 @@
 package lk.ntmi.ticketing_system.service;
 
-import lk.ntmi.ticketing_system.model.Ticket;
-import lk.ntmi.ticketing_system.repository.TicketRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import lk.ntmi.ticketing_system.model.Ticket;
+import lk.ntmi.ticketing_system.repository.TicketRepository;
 
 @Service
 public class TicketService {
@@ -30,22 +31,34 @@ public class TicketService {
         return ticketRepository.findByBranchName(branchName);
     }
 
+    
+    
+    
     // --- THIS IS THE IMPORTANT UPDATE ---
     public Ticket updateTicketStatus(String id, String newStatus, String username) {
         Ticket ticket = ticketRepository.findById(id).orElse(null);
         if (ticket != null) {
-            ticket.setStatus(newStatus);
-
-            // 1. Start Job Logic
-            if ("IN_PROGRESS".equals(newStatus)) {
-                ticket.setStartTime(LocalDateTime.now());
-                ticket.setFixedBy(username); // Save the Admin's Name
-            } 
-            // 2. Complete Job Logic
-            else if ("COMPLETED".equals(newStatus)) {
+            
+            // --- SECURITY CHECK: JOB LOCKING ---
+            // If trying to COMPLETE, check if the user is the one who STARTED it.
+            if ("COMPLETED".equals(newStatus)) {
+                if (ticket.getFixedBy() != null && !ticket.getFixedBy().equals(username)) {
+                    throw new RuntimeException("Access Denied: Only " + ticket.getFixedBy() + " can complete this job.");
+                }
                 ticket.setEndTime(LocalDateTime.now());
             }
+
+            // --- START JOB LOGIC ---
+            if ("IN_PROGRESS".equals(newStatus)) {
+                // If someone else already started it, don't let a second person overwrite it
+                if (ticket.getFixedBy() != null && !ticket.getFixedBy().equals(username)) {
+                     throw new RuntimeException("Job already started by " + ticket.getFixedBy());
+                }
+                ticket.setStartTime(LocalDateTime.now());
+                ticket.setFixedBy(username);
+            } 
             
+            ticket.setStatus(newStatus);
             return ticketRepository.save(ticket);
         }
         return null;
