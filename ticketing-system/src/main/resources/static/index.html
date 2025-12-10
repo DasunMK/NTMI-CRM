@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NTMI Operations Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 20px; background-color: #f0f2f5; }
+        .header { background: #0056b3; color: white; padding: 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .grid-container { display: flex; gap: 20px; margin-top: 20px; }
+        .stats-panel { flex: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); height: fit-content; }
+        .tickets-panel { flex: 2; }
+
+        .ticket-card { background: white; padding: 20px; margin-bottom: 15px; border-radius: 8px; border-left: 6px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        
+        .status-PENDING { border-color: #dc3545; }      /* Red */
+        .status-IN_PROGRESS { border-color: #ffc107; }  /* Yellow */
+        .status-COMPLETED { border-color: #28a745; opacity: 0.7; } /* Green */
+
+        h3 { margin: 0 0 5px 0; color: #333; }
+        p { margin: 5px 0; color: #666; font-size: 0.9em; }
+
+        .action-btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; margin-left: 5px;}
+        .btn-start { background-color: #ffc107; color: black; }
+        .btn-finish { background-color: #28a745; }
+        
+        canvas { max-width: 100%; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>NTMI Operations Center</h1>
+            <p>System Monitoring & Ticket Resolution</p>
+        </div>
+        <button onclick="loadTickets()" style="background:white; color:#0056b3; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">Refresh Data</button>
+    </div>
+
+    <div class="grid-container">
+        <div class="stats-panel">
+            <h2>Summary</h2>
+            <p>Total Tickets: <span id="total-count" style="font-weight:bold; font-size:1.2em">0</span></p>
+            <hr>
+            <h3>Tickets by Branch</h3>
+            <canvas id="branchChart"></canvas> <hr>
+            <h3>Tickets by Status</h3>
+            <canvas id="statusChart"></canvas>
+        </div>
+
+        <div class="tickets-panel" id="ticket-container">
+            <p>Loading tickets...</p>
+        </div>
+    </div>
+
+    <script>
+        // Global variables to hold chart instances (so we can update them)
+        let branchChartInstance = null;
+        let statusChartInstance = null;
+
+        async function loadTickets() {
+            try {
+                const response = await fetch('http://localhost:8080/api/tickets/all');
+                const tickets = await response.json();
+                
+                // 1. Update List Logic
+                updateTicketList(tickets);
+
+                // 2. Update Charts Logic
+                updateCharts(tickets);
+
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function updateTicketList(tickets) {
+            document.getElementById('total-count').innerText = tickets.length;
+            const container = document.getElementById('ticket-container');
+            container.innerHTML = ''; 
+
+            const statusOrder = { 'PENDING': 1, 'IN_PROGRESS': 2, 'COMPLETED': 3 };
+            tickets.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+
+            tickets.forEach(ticket => {
+                let buttons = '';
+                if(ticket.status === 'PENDING') {
+                    buttons = `<button class="action-btn btn-start" onclick="updateStatus('${ticket.id}', 'IN_PROGRESS')">Start Job</button>`;
+                } else if (ticket.status === 'IN_PROGRESS') {
+                    buttons = `<button class="action-btn btn-finish" onclick="updateStatus('${ticket.id}', 'COMPLETED')">Mark Complete</button>`;
+                } else {
+                    buttons = `<span style="color:green; font-weight:bold;">✔ Fixed</span>`;
+                }
+
+                const div = document.createElement('div');
+                div.className = `ticket-card status-${ticket.status}`;
+                div.innerHTML = `
+                    <div>
+                        <h3>${ticket.branchName} <small style="font-weight:normal; font-size:12px">(${ticket.id})</small></h3>
+                        <p><strong>${ticket.errorCategory}:</strong> ${ticket.errorType}</p>
+                        <p><i>"${ticket.description}"</i></p>
+                        <p>Status: <strong>${ticket.status}</strong></p>
+                    </div>
+                    <div>${buttons}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateCharts(tickets) {
+            // --- Logic: Count Tickets per Branch ---
+            const branchCounts = {};
+            tickets.forEach(t => {
+                branchCounts[t.branchName] = (branchCounts[t.branchName] || 0) + 1;
+            });
+
+            // --- Logic: Count Tickets per Status ---
+            const statusCounts = { 'PENDING': 0, 'IN_PROGRESS': 0, 'COMPLETED': 0 };
+            tickets.forEach(t => {
+                if(statusCounts[t.status] !== undefined) statusCounts[t.status]++;
+            });
+
+            // --- Render Branch Chart ---
+            const ctxBranch = document.getElementById('branchChart').getContext('2d');
+            if(branchChartInstance) branchChartInstance.destroy(); // Destroy old chart before creating new one
+            branchChartInstance = new Chart(ctxBranch, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(branchCounts),
+                    datasets: [{
+                        data: Object.values(branchCounts),
+                        backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6f42c1']
+                    }]
+                }
+            });
+
+            // --- Render Status Chart ---
+            const ctxStatus = document.getElementById('statusChart').getContext('2d');
+            if(statusChartInstance) statusChartInstance.destroy();
+            statusChartInstance = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pending', 'In Progress', 'Completed'],
+                    datasets: [{
+                        data: [statusCounts.PENDING, statusCounts.IN_PROGRESS, statusCounts.COMPLETED],
+                        backgroundColor: ['#dc3545', '#ffc107', '#28a745']
+                    }]
+                }
+            });
+        }
+
+        async function updateStatus(id, newStatus) {
+            if(!confirm("Update status to " + newStatus + "?")) return;
+            await fetch(`http://localhost:8080/api/tickets/update/${id}/${newStatus}`, { method: 'PUT' });
+            loadTickets(); 
+        }
+
+        loadTickets();
+    </script>
+
+</body>
+</html>

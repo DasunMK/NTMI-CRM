@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NTMI Branch - Raise Ticket</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #e9ecef; }
+        .container { max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        
+        label { display: block; margin-top: 15px; font-weight: bold; }
+        select, input, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;}
+        
+        button { width: 100%; padding: 12px; margin-top: 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+        button:hover { background-color: #218838; }
+
+        .success-msg { color: green; text-align: center; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Raise New Ticket</h2>
+        <p style="text-align: center; color: #666;">NTMI Branch Support</p>
+
+        <form id="ticketForm">
+            <label>Branch Name:</label>
+            <select id="branchName">
+                <option value="Gampaha">Gampaha</option>
+                <option value="Kandy">Kandy</option>
+                <option value="Galle">Galle</option>
+                <option value="Nugegoda">Nugegoda</option>
+            </select>
+
+            <label>Error Category:</label>
+            <select id="category">
+                <option value="Hardware">Hardware</option>
+                <option value="Network">Network</option>
+                <option value="Software">Software</option>
+            </select>
+
+            <label>Error Type:</label>
+            <select id="type">
+                <option value="Printer Issue">Printer Issue</option>
+                <option value="Internet Slow">Internet Slow</option>
+                <option value="Login Failed">Login Failed</option>
+                <option value="System Crash">System Crash</option>
+            </select>
+
+            <label>Description (Optional):</label>
+            <textarea id="desc" rows="3" placeholder="Describe the issue..."></textarea>
+
+            <button type="submit">Submit Ticket</button>
+            <p id="message" class="success-msg">Ticket Created Successfully!</p>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('ticketForm').addEventListener('submit', async function(e) {
+            e.preventDefault(); // Stop page from reloading
+
+            // 1. Collect data from the form
+            const ticketData = {
+                branchName: document.getElementById('branchName').value,
+                errorCategory: document.getElementById('category').value,
+                errorType: document.getElementById('type').value,
+                description: document.getElementById('desc').value,
+                status: "PENDING" // Default status
+            };
+
+            // 2. Send data to Java Backend (POST Request)
+            try {
+                const response = await fetch('http://localhost:8080/api/tickets/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(ticketData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    document.getElementById('message').style.display = 'block';
+                    document.getElementById('message').innerText = "Ticket Sent! ID: " + result.id;
+                    document.getElementById('ticketForm').reset(); // Clear form
+                } else {
+                    alert("Error submitting ticket");
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Could not connect to server.");
+            }
+        });
+    </script>
+
+</body>
+</html>
