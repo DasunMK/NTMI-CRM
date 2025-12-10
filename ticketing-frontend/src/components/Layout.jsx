@@ -41,9 +41,7 @@ export default function Layout() {
               style={{ 
                 height: '40px', // Adjust height to fit the bar
                 width: 'auto',
-                backgroundColor: 'white', // Optional: White background if logo is transparent
-                padding: '4px',
-                borderRadius: '4px' 
+                
               }} 
             />
             <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 'bold' }}>
